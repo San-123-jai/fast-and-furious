@@ -39,6 +39,10 @@ export const router = createBrowserRouter([
     element: <PostList />,
   },
   {
+    path: '/feed',
+    element: <Feed />,
+  },
+  {
     path: '/jobs',
     element: <JobList />,
   },

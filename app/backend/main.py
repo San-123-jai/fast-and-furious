@@ -11,6 +11,9 @@ load_dotenv()
 from models.user import User, db as user_db
 from models.profile import Profile, Skill, Experience, Education, db as profile_db
 
+# Import API blueprints
+from api import auth_bp, profile_bp, posts_bp, feed_bp, jobs_bp, messaging_bp
+
 # Create Flask app
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -18,8 +21,17 @@ app.config.from_object(Config)
 # Initialize extensions
 CORS(app)
 
-# Initialize database
-db = SQLAlchemy(app)
+# Initialize database - use the same instance from user model
+db = user_db
+db.init_app(app)
+
+# Register blueprints
+app.register_blueprint(auth_bp, url_prefix='/auth')
+app.register_blueprint(profile_bp, url_prefix='/profile')
+app.register_blueprint(posts_bp, url_prefix='/posts')
+app.register_blueprint(feed_bp, url_prefix='/feed')
+app.register_blueprint(jobs_bp, url_prefix='/jobs')
+app.register_blueprint(messaging_bp, url_prefix='/messages')
 
 def setup_database():
     """Setup database tables"""
