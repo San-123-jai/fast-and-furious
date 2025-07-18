@@ -1,5 +1,9 @@
-from flask import Blueprint
+from flask import Blueprint, request, jsonify
 
 messaging_bp = Blueprint('messaging', __name__)
- 
-# Routes will be implemented here 
+
+@messaging_bp.route('/', methods=['GET', 'OPTIONS'])
+def get_messages():
+    if request.method == 'OPTIONS':
+        return '', 200
+    return jsonify({'message': 'Messages endpoint - to be implemented'}), 200 

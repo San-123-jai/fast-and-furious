@@ -61,13 +61,18 @@ const Login: React.FC = () => {
     try {
       const response = await authApi.login(formData);
       
-      if (response.success) {
-        login(); // Update auth context
-        navigate('/feed'); // Redirect to feed page
+      console.log('Login response:', response);
+      
+      if (response.message && response.token) {
+        // Store the token
+        localStorage.setItem('token', response.token);
+        login(response.user); // Pass user object to context
+        navigate('/profile'); // Redirect to profile page after login
       } else {
         setLoginError(response.message || 'Login failed. Please try again.');
       }
     } catch (error) {
+      console.error('Login error:', error);
       setLoginError('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);

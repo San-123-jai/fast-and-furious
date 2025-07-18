@@ -1,5 +1,110 @@
-from flask import Blueprint
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from models.user import User, db
+from models.profile import Profile, Skill, Experience, Education
 
 profile_bp = Blueprint('profile', __name__)
- 
-# Routes will be implemented here 
+
+def get_or_create_profile(user_id):
+    profile = Profile.query.filter_by(user_id=user_id).first()
+    if not profile:
+        profile = Profile(user_id=user_id)
+        db.session.add(profile)
+        db.session.commit()
+    return profile
+
+@profile_bp.route('', methods=['GET', 'OPTIONS'])
+@profile_bp.route('/', methods=['GET', 'OPTIONS'])
+@jwt_required()
+def get_profile():
+    if request.method == 'OPTIONS':
+        return '', 200
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    profile = get_or_create_profile(user_id)
+    skills = [s.name for s in Skill.query.filter_by(profile_id=profile.id).all()]
+    experiences = [
+        {
+            'id': e.id,
+            'title': e.title,
+            'company': e.company,
+            'start_date': e.start_date.isoformat() if e.start_date else None,
+            'end_date': e.end_date.isoformat() if e.end_date else None,
+            'description': e.description
+        } for e in Experience.query.filter_by(profile_id=profile.id).all()
+    ]
+    educations = [
+        {
+            'id': ed.id,
+            'school': ed.school,
+            'degree': ed.degree,
+            'field': ed.field,
+            'start_date': ed.start_date.isoformat() if ed.start_date else None,
+            'end_date': ed.end_date.isoformat() if ed.end_date else None
+        } for ed in Education.query.filter_by(profile_id=profile.id).all()
+    ]
+    profile_data = {
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'bio': profile.bio,
+        'location': profile.location,
+        'skills': skills,
+        'experiences': experiences,
+        'educations': educations
+    }
+    return jsonify(profile_data), 200
+
+@profile_bp.route('', methods=['PUT', 'OPTIONS'])
+@profile_bp.route('/', methods=['PUT', 'OPTIONS'])
+@jwt_required()
+def update_profile():
+    if request.method == 'OPTIONS':
+        return '', 200
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    profile = get_or_create_profile(user_id)
+    data = request.get_json()
+    if 'username' in data:
+        user.username = data['username']
+    if 'email' in data:
+        user.email = data['email']
+    if 'bio' in data:
+        profile.bio = data['bio']
+    if 'location' in data:
+        profile.location = data['location']
+    # Skills
+    if 'skills' in data:
+        Skill.query.filter_by(profile_id=profile.id).delete()
+        for skill in data['skills']:
+            db.session.add(Skill(profile_id=profile.id, name=skill))
+    # Experience
+    if 'experiences' in data:
+        Experience.query.filter_by(profile_id=profile.id).delete()
+        for exp in data['experiences']:
+            db.session.add(Experience(
+                profile_id=profile.id,
+                title=exp.get('title'),
+                company=exp.get('company'),
+                start_date=exp.get('start_date'),
+                end_date=exp.get('end_date'),
+                description=exp.get('description')
+            ))
+    # Education
+    if 'educations' in data:
+        Education.query.filter_by(profile_id=profile.id).delete()
+        for ed in data['educations']:
+            db.session.add(Education(
+                profile_id=profile.id,
+                school=ed.get('school'),
+                degree=ed.get('degree'),
+                field=ed.get('field'),
+                start_date=ed.get('start_date'),
+                end_date=ed.get('end_date')
+            ))
+    db.session.commit()
+    return jsonify({'message': 'Profile updated successfully'}), 200 

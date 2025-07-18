@@ -1,16 +1,66 @@
 import os
 from datetime import timedelta
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+import re
+
+class User:
+    def __init__(self, username, email, password_hash):
+        self.username = username
+        self.email = email
+        self.password_hash = password_hash
+
+    def set_password(self, password):
+        if not self.is_password_complex(password):
+            raise ValueError(
+                "Password must be at least 8 characters long, "
+                "contain an uppercase letter, a lowercase letter, "
+                "a digit, and a special character."
+            )
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    @staticmethod
+    def is_password_complex(password):
+        # At least 8 chars, one uppercase, one lowercase, one digit, one special char
+        if (len(password) < 8 or
+            not re.search(r"[A-Z]", password) or
+            not re.search(r"[a-z]", password) or
+            not re.search(r"\d", password) or
+            not re.search(r"[^\w\s]", password)):
+            return False
+        return True
+
+    @staticmethod
+    def is_unique_username(username):
+        return User.query.filter_by(username=username).first() is None
+
+    @staticmethod
+    def is_unique_email(email):
+        return User.query.filter_by(email=email).first() is None
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email
+        }
 
 class Config:
     # Flask
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev')
     
     # Database
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'mysql://root:password@localhost/prok_db')
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'mysql://root@localhost/prok_db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-key')
+    JWT_TOKEN_LOCATION = ['headers']
+    JWT_HEADER_NAME = 'Authorization'
+    JWT_HEADER_TYPE = 'Bearer'
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
     
     # CORS

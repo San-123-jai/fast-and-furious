@@ -85,13 +85,18 @@ const Signup: React.FC = () => {
         password: formData.password
       });
       
-      if (response.success) {
-        login(); // Update auth context
-        navigate('/feed'); // Redirect to feed page
+      console.log('Signup response:', response);
+      
+      if (response.message && response.token) {
+        // Store the token if you want, or skip
+        // localStorage.setItem('token', response.token);
+        // login(); // Do not log in automatically after signup
+        navigate('/login'); // Redirect to login page
       } else {
         setSignupError(response.message || 'Signup failed. Please try again.');
       }
     } catch (error) {
+      console.error('Signup error:', error);
       setSignupError('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);

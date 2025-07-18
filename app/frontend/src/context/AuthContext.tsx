@@ -2,12 +2,14 @@ import React, { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
 
 interface User {
-  name: string;
+  id: number;
+  username: string;
+  email: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: () => void;
+  login: (user: User) => void;
   logout: () => void;
 }
 
@@ -20,8 +22,11 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
 
-  const login = () => setUser({ name: 'Demo User' });
-  const logout = () => setUser(null);
+  const login = (userObj: User) => setUser(userObj);
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('token');
+  };
 
   return (
     <AuthContext.Provider value={{ user, login, logout }}>
