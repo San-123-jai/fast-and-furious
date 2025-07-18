@@ -17,13 +17,7 @@ app.config.from_object(Config)
 jwt = JWTManager(app)
 
 # Initialize extensions
-CORS(app, 
-     origins=['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174', 
-              'http://localhost:5175', 'http://127.0.0.1:5175', 'http://localhost:5176', 'http://127.0.0.1:5176',
-              'http://localhost:3000', 'http://127.0.0.1:3000'],
-     supports_credentials=False, 
-     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-     allow_headers=['Content-Type', 'Authorization', 'X-Requested-With'])
+CORS(app, origins="*", supports_credentials=True, methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], allow_headers=["Content-Type", "Authorization", "X-Requested-With"])
 
 # Import models
 from models.user import User, db as user_db
