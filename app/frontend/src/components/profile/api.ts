@@ -23,4 +23,16 @@ export const profileApi = {
     });
     return response.json();
   },
+
+  uploadImage: async (formData: FormData) => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/profile/image`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    return response.json();
+  },
 }; 

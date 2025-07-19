@@ -1,20 +1,14 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.user import User, db
+from flask_jwt_extended import create_access_token
 import jwt
 from datetime import datetime, timedelta
 import os
 
 auth_bp = Blueprint('auth', __name__)
-
-def generate_token(user_id):
-    """Generate JWT token"""
-    payload = {
-        'user_id': user_id,
-        'exp': datetime.utcnow() + timedelta(hours=24),
-        'iat': datetime.utcnow()
-    }
-    return jwt.encode(payload, os.environ.get('JWT_SECRET_KEY', 'jwt-secret-key'), algorithm='HS256')
+ 
+# Remove custom generate_token function
 
 @auth_bp.route('/signup', methods=['POST', 'OPTIONS'])
 def signup():
@@ -51,8 +45,8 @@ def signup():
         db.session.add(user)
         db.session.commit()
         
-        # Generate token
-        token = generate_token(user.id)
+        # Generate token using Flask-JWT-Extended (identity must be str)
+        token = create_access_token(identity=str(user.id))
         
         return jsonify({
             'message': 'User created successfully',
@@ -90,8 +84,8 @@ def login():
         if not user.check_password(password):
             return jsonify({'error': 'Invalid email or password'}), 401
         
-        # Generate token
-        token = generate_token(user.id)
+        # Generate token using Flask-JWT-Extended (identity must be str)
+        token = create_access_token(identity=str(user.id))
         
         return jsonify({
             'message': 'Login successful',

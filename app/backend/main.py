@@ -14,17 +14,19 @@ load_dotenv()
 app = Flask(__name__)
 app.config.from_object(Config)
 
+# Initialize app configuration
+Config.init_app(app)
+
 jwt = JWTManager(app)
 
 # Initialize extensions
 CORS(app, origins="*", supports_credentials=True, methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], allow_headers=["Content-Type", "Authorization", "X-Requested-With"])
 
-# Import models
-from models.user import User, db as user_db
-from models.profile import Profile, Skill, Experience, Education, db as profile_db
+# Import models - User first, then Profile models
+from models.user import User, db
+from models.profile import Profile, Skill, Experience, Education
 
-# Initialize database - use the same instance from user model
-db = user_db
+# Initialize database
 db.init_app(app)
 
 # Initialize Flask-Migrate
@@ -40,6 +42,15 @@ app.register_blueprint(posts_bp, url_prefix='/posts')
 app.register_blueprint(feed_bp, url_prefix='/feed')
 app.register_blueprint(jobs_bp, url_prefix='/jobs')
 app.register_blueprint(messaging_bp, url_prefix='/messages')
+
+# Add route to serve uploaded images at root level
+from flask import send_from_directory
+import os
+
+@app.route('/uploads/<path:filename>')
+def serve_uploaded_image(filename):
+    """Serve uploaded images from the root level"""
+    return send_from_directory(Config.UPLOAD_FOLDER, filename)
 
 def setup_database():
     """Setup database tables"""

@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
+from datetime import datetime
 
 db = SQLAlchemy()
 
@@ -11,6 +12,19 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
+    
+    # Extended profile fields
+    first_name = db.Column(db.String(50))
+    last_name = db.Column(db.String(50))
+    profile_image = db.Column(db.String(255))  # URL to profile image
+    phone = db.Column(db.String(20))
+    website = db.Column(db.String(255))
+    headline = db.Column(db.String(200))  # Professional headline
+    industry = db.Column(db.String(100))
+    company = db.Column(db.String(100))
+    job_title = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def set_password(self, password):
         if not self.is_password_complex(password):
@@ -47,5 +61,30 @@ class User(db.Model):
         return {
             'id': self.id,
             'username': self.username,
-            'email': self.email
+            'email': self.email,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'profile_image': self.profile_image,
+            'phone': self.phone,
+            'website': self.website,
+            'headline': self.headline,
+            'industry': self.industry,
+            'company': self.company,
+            'job_title': self.job_title,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+    def update_profile(self, data):
+        """Update profile fields with validation"""
+        allowed_fields = [
+            'first_name', 'last_name', 'phone', 'website', 
+            'headline', 'industry', 'company', 'job_title'
+        ]
+        
+        for field in allowed_fields:
+            if field in data:
+                setattr(self, field, data[field])
+        
+        # Update timestamp
+        self.updated_at = datetime.utcnow()

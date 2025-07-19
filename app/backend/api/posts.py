@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 
 posts_bp = Blueprint('posts', __name__)
-
+ 
 @posts_bp.route('/', methods=['GET', 'OPTIONS'])
 def get_posts():
     if request.method == 'OPTIONS':
