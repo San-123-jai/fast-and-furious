@@ -66,6 +66,8 @@ const Login: React.FC = () => {
       if (response.message && response.token) {
         // Store the token
         localStorage.setItem('token', response.token);
+        // Store the user object in localStorage for access across components
+        localStorage.setItem('user', JSON.stringify(response.user));
         login(response.user); // Pass user object to context
         navigate('/profile'); // Redirect to profile page after login
       } else {
@@ -91,8 +93,8 @@ const Login: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Welcome Back
+            <h2 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent tracking-wider" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>
+              BOSS
             </h2>
             <p className="text-gray-600 mt-2">Sign in to your account to continue</p>
           </div>

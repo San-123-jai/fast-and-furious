@@ -26,6 +26,9 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Relationships
+    posts = db.relationship('Post', back_populates='user', cascade='all, delete-orphan')
+    
     def set_password(self, password):
         if not self.is_password_complex(password):
             raise ValueError(

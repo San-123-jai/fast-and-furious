@@ -17,6 +17,8 @@ const Navbar: React.FC = () => {
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center gap-4">
             <Link to="/profile" className="text-blue-700 font-semibold hover:underline">Profile</Link>
+            <Link to="/posts" className="text-blue-700 font-semibold hover:underline">Posts</Link>
+            <Link to="/posts/create" className="text-blue-700 font-semibold hover:underline">Create Post</Link>
             {/* Add more navigation items here if needed */}
           </div>
           {user ? (
