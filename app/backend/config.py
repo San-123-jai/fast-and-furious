@@ -64,7 +64,7 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
     
     # CORS
-    CORS_HEADERS = 'Content-Type'
+    CORS_HEADERS = 'Content-Type' 
     
     # File Upload Configuration
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')

@@ -195,7 +195,7 @@ const ProfileEdit: React.FC = () => {
               <label className="block font-semibold text-gray-700 mb-2">First Name</label>
               <input 
                 name="first_name" 
-                value={form.first_name || ''} 
+                value={form.first_name ?? ''} 
                 onChange={handleChange} 
                 className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
               />
@@ -204,7 +204,7 @@ const ProfileEdit: React.FC = () => {
               <label className="block font-semibold text-gray-700 mb-2">Last Name</label>
               <input 
                 name="last_name" 
-                value={form.last_name || ''} 
+                value={form.last_name ?? ''} 
                 onChange={handleChange} 
                 className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
               />
@@ -215,7 +215,7 @@ const ProfileEdit: React.FC = () => {
             <label className="block font-semibold text-gray-700 mb-2">Username</label>
             <input 
               name="username" 
-              value={form.username} 
+              value={form.username ?? ''} 
               onChange={handleChange} 
               className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
             />
@@ -225,7 +225,7 @@ const ProfileEdit: React.FC = () => {
             <label className="block font-semibold text-gray-700 mb-2">Email</label>
             <input 
               name="email" 
-              value={form.email} 
+              value={form.email ?? ''} 
               onChange={handleChange} 
               className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
             />
@@ -235,7 +235,7 @@ const ProfileEdit: React.FC = () => {
             <label className="block font-semibold text-gray-700 mb-2">Professional Headline</label>
             <input 
               name="headline" 
-              value={form.headline || ''} 
+              value={form.headline ?? ''} 
               onChange={handleChange} 
               placeholder="e.g., Senior Software Engineer" 
               className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
@@ -251,7 +251,7 @@ const ProfileEdit: React.FC = () => {
               <label className="block font-semibold text-gray-700 mb-2">Phone</label>
               <input 
                 name="phone" 
-                value={form.phone || ''} 
+                value={form.phone ?? ''} 
                 onChange={handleChange} 
                 className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
               />
@@ -260,7 +260,7 @@ const ProfileEdit: React.FC = () => {
               <label className="block font-semibold text-gray-700 mb-2">Website</label>
               <input 
                 name="website" 
-                value={form.website || ''} 
+                value={form.website ?? ''} 
                 onChange={handleChange} 
                 placeholder="https://yourwebsite.com" 
                 className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
@@ -277,7 +277,7 @@ const ProfileEdit: React.FC = () => {
               <label className="block font-semibold text-gray-700 mb-2">Industry</label>
               <input 
                 name="industry" 
-                value={form.industry || ''} 
+                value={form.industry ?? ''} 
                 onChange={handleChange} 
                 placeholder="e.g., Technology" 
                 className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
@@ -287,7 +287,7 @@ const ProfileEdit: React.FC = () => {
               <label className="block font-semibold text-gray-700 mb-2">Company</label>
               <input 
                 name="company" 
-                value={form.company || ''} 
+                value={form.company ?? ''} 
                 onChange={handleChange} 
                 className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
               />
@@ -296,7 +296,7 @@ const ProfileEdit: React.FC = () => {
               <label className="block font-semibold text-gray-700 mb-2">Job Title</label>
               <input 
                 name="job_title" 
-                value={form.job_title || ''} 
+                value={form.job_title ?? ''} 
                 onChange={handleChange} 
                 className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
               />
@@ -307,7 +307,7 @@ const ProfileEdit: React.FC = () => {
             <label className="block font-semibold text-gray-700 mb-2">Bio</label>
             <textarea 
               name="bio" 
-              value={form.bio || ''} 
+              value={form.bio ?? ''} 
               onChange={handleChange} 
               rows={4} 
               className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors resize-none" 
@@ -318,7 +318,7 @@ const ProfileEdit: React.FC = () => {
             <label className="block font-semibold text-gray-700 mb-2">Location</label>
             <input 
               name="location" 
-              value={form.location || ''} 
+              value={form.location ?? ''} 
               onChange={handleChange} 
               className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
             />
@@ -332,7 +332,7 @@ const ProfileEdit: React.FC = () => {
             {form.skills.map((skill: string, idx: number) => (
               <div key={idx} className="flex gap-3">
                 <input 
-                  value={skill} 
+                  value={skill ?? ''} 
                   onChange={e => handleSkillChange(idx, e.target.value)} 
                   placeholder="Enter a skill"
                   className="border border-gray-300 p-3 rounded-lg flex-1 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
@@ -358,13 +358,13 @@ const ProfileEdit: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <input 
                     placeholder="Job Title" 
-                    value={exp.title} 
+                    value={exp.title ?? ''} 
                     onChange={e => handleExpChange(idx, 'title', e.target.value)} 
                     className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
                   />
                   <input 
                     placeholder="Company" 
-                    value={exp.company} 
+                    value={exp.company ?? ''} 
                     onChange={e => handleExpChange(idx, 'company', e.target.value)} 
                     className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
                   />
@@ -373,21 +373,21 @@ const ProfileEdit: React.FC = () => {
                   <input 
                     placeholder="Start Date" 
                     type="date" 
-                    value={exp.start_date} 
+                    value={exp.start_date ?? ''} 
                     onChange={e => handleExpChange(idx, 'start_date', e.target.value)} 
                     className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
                   />
                   <input 
                     placeholder="End Date" 
                     type="date" 
-                    value={exp.end_date} 
+                    value={exp.end_date ?? ''} 
                     onChange={e => handleExpChange(idx, 'end_date', e.target.value)} 
                     className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
                   />
                 </div>
                 <textarea 
                   placeholder="Description" 
-                  value={exp.description} 
+                  value={exp.description ?? ''} 
                   onChange={e => handleExpChange(idx, 'description', e.target.value)} 
                   rows={3}
                   className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors resize-none" 
@@ -413,19 +413,19 @@ const ProfileEdit: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <input 
                     placeholder="School" 
-                    value={ed.school} 
+                    value={ed.school ?? ''} 
                     onChange={e => handleEduChange(idx, 'school', e.target.value)} 
                     className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
                   />
                   <input 
                     placeholder="Degree" 
-                    value={ed.degree} 
+                    value={ed.degree ?? ''} 
                     onChange={e => handleEduChange(idx, 'degree', e.target.value)} 
                     className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
                   />
                   <input 
                     placeholder="Field of Study" 
-                    value={ed.field} 
+                    value={ed.field ?? ''} 
                     onChange={e => handleEduChange(idx, 'field', e.target.value)} 
                     className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
                   />
@@ -434,14 +434,14 @@ const ProfileEdit: React.FC = () => {
                   <input 
                     placeholder="Start Date" 
                     type="date" 
-                    value={ed.start_date} 
+                    value={ed.start_date ?? ''} 
                     onChange={e => handleEduChange(idx, 'start_date', e.target.value)} 
                     className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
                   />
                   <input 
                     placeholder="End Date" 
                     type="date" 
-                    value={ed.end_date} 
+                    value={ed.end_date ?? ''} 
                     onChange={e => handleEduChange(idx, 'end_date', e.target.value)} 
                     className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" 
                   />

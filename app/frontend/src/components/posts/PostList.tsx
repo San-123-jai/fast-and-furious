@@ -1,100 +1,160 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { postsApi } from './api';
-import type { Post } from './api';
+import { postsApi, type Post, type Category, type PopularTag, type PostsFilters } from './api';
+import { useDebounce } from '../../hooks/useDebounce';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { PostSkeleton, Skeleton } from '../ui/Skeleton';
+import { LazyImage } from '../ui/LazyImage';
 
 const PostList: React.FC = () => {
+  // State management
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    per_page: 10,
-    total: 0,
-    pages: 0,
-    has_next: false,
-    has_prev: false
-  });
+  const [hasNextPage, setHasNextPage] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [notAuthenticated, setNotAuthenticated] = useState(false);
+  const [debugToken, setDebugToken] = useState<string | null>(null);
+  const [debugUser, setDebugUser] = useState<any>(null);
+  const [shareMessage, setShareMessage] = useState<{ [postId: number]: boolean }>({});
 
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedVisibility, setSelectedVisibility] = useState('');
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Data states
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [popularTags, setPopularTags] = useState<PopularTag[]>([]);
+  const [stats, setStats] = useState<any>(null);
+
+  // Debounced search
+  const debouncedSearch = useDebounce(searchTerm, 500);
+
+  // Get current user and token
   useEffect(() => {
-    fetchPosts();
-    // Get current user from localStorage or token
     getCurrentUser();
-  }, [currentPage]);
+    setDebugToken(localStorage.getItem('token'));
+    try {
+      setDebugUser(JSON.parse(localStorage.getItem('user') || 'null'));
+    } catch {
+      setDebugUser(null);
+    }
+  }, []);
+
+  // Load initial data only if authenticated
+  useEffect(() => {
+    if (localStorage.getItem('token')) {
+      loadInitialData();
+    }
+  }, []);
+
+  // Fetch posts when filters change, only if authenticated
+  useEffect(() => {
+    if (localStorage.getItem('token')) {
+      setCurrentPage(1);
+      setPosts([]);
+      fetchPosts(1, true);
+    }
+  }, [debouncedSearch, selectedCategory, selectedTags, selectedVisibility, sortBy, sortOrder]);
 
   const getCurrentUser = () => {
-    // Try to get user from localStorage first
     const userStr = localStorage.getItem('user');
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
         setCurrentUser(user);
-        console.log('Current user from localStorage:', user);
-        return;
       } catch (e) {
         console.error('Failed to parse user data from localStorage:', e);
       }
     }
-
-    // If no user in localStorage, try to get from token
-    const token = localStorage.getItem('token');
-    if (token) {
-      // Decode JWT token to get user info
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        console.log('User from token payload:', payload);
-        // Get user info from the API instead of using fallback
-        fetchUserFromToken(payload.sub);
-      } catch (e) {
-        console.error('Failed to decode token:', e);
-      }
-    }
   };
 
-  const fetchUserFromToken = async (userId: string) => {
+  const loadInitialData = async () => {
     try {
-      // Fetch user profile from the API
-      const response = await fetch(`http://localhost:5000/profile`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const [categoriesRes, tagsRes, statsRes] = await Promise.all([
+        postsApi.getCategories(),
+        postsApi.getPopularTags(),
+        postsApi.getStats()
+      ]);
       
-      if (response.ok) {
-        const userData = await response.json();
-        setCurrentUser(userData);
-        // Store the user data in localStorage for future use
-        localStorage.setItem('user', JSON.stringify(userData));
-        console.log('User fetched from API:', userData);
-      } else {
-        console.error('Failed to fetch user data from API');
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-    }
-  };
-
-  const fetchPosts = async () => {
-    try {
-      setLoading(true);
-      const response = await postsApi.getPosts(currentPage, 10);
-      setPosts(response.posts);
-      setPagination(response.pagination);
-      console.log('Fetched posts:', response.posts);
+      setCategories(categoriesRes.categories);
+      setPopularTags(tagsRes.popular_tags);
+      setStats(statsRes.stats);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch posts');
-    } finally {
+      if (err.response && err.response.status === 401) {
+        setNotAuthenticated(true);
+        setError('You are not authenticated. Please log in.');
+      } else {
+        setError('Failed to load initial data.');
+      }
       setLoading(false);
     }
   };
 
+  const fetchPosts = async (page: number, reset = false) => {
+    try {
+      if (reset) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const filters: PostsFilters = {
+        search: debouncedSearch,
+        category: selectedCategory,
+        tags: selectedTags.join(','),
+        visibility: selectedVisibility,
+        sort_by: sortBy,
+        sort_order: sortOrder
+      };
+
+      const response = await postsApi.getPosts(page, 10, filters);
+      
+      if (reset) {
+        setPosts(response.posts);
+      } else {
+        setPosts(prev => [...prev, ...response.posts]);
+      }
+      
+      setCurrentPage(page);
+      setHasNextPage(response.pagination.has_next);
+    } catch (err: any) {
+      if (err.response && err.response.status === 401) {
+        setNotAuthenticated(true);
+        setError('You are not authenticated. Please log in.');
+      } else {
+        setError(err.message || 'Failed to fetch posts');
+      }
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const loadMore = useCallback(() => {
+    if (!loadingMore && hasNextPage) {
+      fetchPosts(currentPage + 1);
+    }
+  }, [loadingMore, hasNextPage, currentPage]);
+
+  // Infinite scroll hook
+  const observerRef = useInfiniteScroll({
+    hasNextPage,
+    isFetching: loadingMore,
+    onLoadMore: loadMore
+  });
+
   const handleLike = async (postId: number) => {
     try {
       await postsApi.likePost(postId);
-      // Update the post in the list
       setPosts(prevPosts => 
         prevPosts.map(post => 
           post.id === postId 
@@ -110,23 +170,37 @@ const PostList: React.FC = () => {
   const handleDelete = async (postId: number) => {
     try {
       await postsApi.deletePost(postId);
-      // Remove the post from the list
       setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
       setDeleteConfirm(null);
-      // Show success message
-      alert('Post deleted successfully!');
     } catch (err: any) {
       console.error('Failed to delete post:', err);
-      alert('Failed to delete post. Please try again.');
     }
   };
 
-  const confirmDelete = (postId: number) => {
-    setDeleteConfirm(postId);
+  const handleTagToggle = (tag: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) 
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag]
+    );
   };
 
-  const cancelDelete = () => {
-    setDeleteConfirm(null);
+  const handleShare = (postId: number) => {
+    const url = `${window.location.origin}/posts/${postId}`;
+    navigator.clipboard.writeText(url);
+    setShareMessage((prev) => ({ ...prev, [postId]: true }));
+    setTimeout(() => {
+      setShareMessage((prev) => ({ ...prev, [postId]: false }));
+    }, 1500);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSelectedCategory('');
+    setSelectedTags([]);
+    setSelectedVisibility('');
+    setSortBy('created_at');
+    setSortOrder('desc');
   };
 
   const formatContent = (content: string) => {
@@ -169,7 +243,7 @@ const PostList: React.FC = () => {
     } else {
       return (
         <div className="border border-gray-200 rounded-lg overflow-hidden mb-4">
-          <img
+          <LazyImage
             src={mediaUrl}
             alt="Post media"
             className="w-full max-h-96 object-cover"
@@ -179,24 +253,51 @@ const PostList: React.FC = () => {
     }
   };
 
-  // Check if current user is the post author
   const isPostAuthor = (post: Post) => {
-    if (!currentUser) {
-      console.log('No current user found');
-      return false;
-    }
-    
-    const isAuthor = currentUser.id === post.user_id;
-    console.log(`Post ${post.id}: User ID ${currentUser.id} vs Post User ID ${post.user_id} = ${isAuthor}`);
-    return isAuthor;
+    return currentUser?.id === post.user_id;
   };
+
+  const hasActiveFilters = searchTerm || selectedCategory || selectedTags.length > 0 || selectedVisibility;
+
+  if (notAuthenticated) {
+    return (
+      <div className="max-w-2xl mx-auto p-8 text-center">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold text-red-700 mb-2">You are not authenticated</h2>
+          <p className="text-red-600 mb-4">Please log in to view posts.</p>
+          <button
+            onClick={() => { window.location.href = '/login'; }}
+            className="bg-amber-600 text-white px-6 py-3 rounded-lg hover:bg-amber-700 transition-colors font-semibold shadow-lg"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading && posts.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto p-4">
-        <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
+      <div className="max-w-6xl mx-auto p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Filters Sidebar Skeleton */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+              <div className="space-y-4">
+                <Skeleton lines={3} />
+                <Skeleton lines={2} />
+                <Skeleton lines={4} />
+              </div>
+            </div>
+          </div>
+          
+          {/* Posts Skeleton */}
+          <div className="lg:col-span-3">
+            <div className="space-y-6">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <PostSkeleton key={index} />
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -204,13 +305,20 @@ const PostList: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
+    <div className="max-w-6xl mx-auto p-4">
       {/* Header */}
       <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-3xl font-bold text-gray-900 tracking-wider" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>
-            Posts
-          </h1>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-wider" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>
+              Posts
+            </h1>
+            {stats && (
+              <p className="text-gray-600 mt-1">
+                {stats.total_posts} posts • {stats.total_likes} likes • {stats.total_views} views
+              </p>
+            )}
+          </div>
           <div className="flex items-center space-x-3">
             <Link
               to="/profile"
@@ -241,199 +349,362 @@ const PostList: React.FC = () => {
           </div>
         )}
 
-        {/* Debug Info - Remove in production */}
+        {/* Debug Info */}
         {currentUser && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
             <p className="text-sm text-blue-700">
-              <strong>Debug:</strong> Current User ID: {currentUser.id} | Username: {currentUser.username || 'N/A'} | Name: {currentUser.first_name || ''} {currentUser.last_name || ''} | Email: {currentUser.email || 'N/A'}
+              <strong>Debug:</strong> Current User ID: {currentUser.id} | Username: {currentUser.username || 'N/A'}
             </p>
           </div>
         )}
       </div>
 
-      {/* Posts List */}
-      <div className="space-y-6">
-        {posts.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-12 text-center">
-            <div className="text-gray-400 mb-4">
-              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Filters Sidebar */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 sticky top-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="text-sm text-amber-600 hover:text-amber-700 font-medium"
+                >
+                  Clear All
+                </button>
+              )}
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No posts yet</h3>
-            <p className="text-gray-500 mb-6">Be the first to share something amazing!</p>
-            <Link
-              to="/posts/create"
-              className="bg-gradient-to-r from-amber-600 to-yellow-600 text-white px-6 py-3 rounded-lg hover:from-amber-700 hover:to-yellow-700 transition-all duration-200 font-semibold"
-            >
-              Create Your First Post
-            </Link>
-          </div>
-        ) : (
-          posts.map((post) => (
-            <div key={post.id} className="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow relative">
-              {/* Delete Button - Only show for post author */}
-              {isPostAuthor(post) && (
-                <div className="absolute top-4 right-4">
-                  {deleteConfirm === post.id ? (
-                    <div className="flex items-center space-x-2 bg-red-50 border border-red-200 rounded-lg p-2">
-                      <span className="text-xs text-red-700 font-medium">Delete?</span>
+
+            {/* Search */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search posts..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Categories */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Categories</label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              >
+                <option value="">All Categories</option>
+                {categories.map((category) => (
+                  <option key={category.slug} value={category.name}>
+                    {category.name} ({category.count})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Popular Tags */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Popular Tags</label>
+              <div className="flex flex-wrap gap-2">
+                {popularTags.slice(0, 10).map((tag) => (
+                  <button
+                    key={tag.slug}
+                    onClick={() => handleTagToggle(tag.tag)}
+                    className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                      selectedTags.includes(tag.tag)
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {tag.tag} ({tag.count})
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Visibility */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Visibility</label>
+              <select
+                value={selectedVisibility}
+                onChange={(e) => setSelectedVisibility(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              >
+                <option value="">All Posts</option>
+                <option value="featured">Featured Posts</option>
+                <option value="recent">Recent Posts (7 days)</option>
+              </select>
+            </div>
+
+            {/* Sort */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent mb-2"
+              >
+                <option value="created_at">Date Created</option>
+                <option value="updated_at">Date Updated</option>
+                <option value="likes_count">Likes</option>
+                <option value="views_count">Views</option>
+                <option value="comments_count">Comments</option>
+              </select>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setSortOrder('desc')}
+                  className={`flex-1 px-3 py-2 text-sm rounded-lg transition-colors ${
+                    sortOrder === 'desc'
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Desc
+                </button>
+                <button
+                  onClick={() => setSortOrder('asc')}
+                  className={`flex-1 px-3 py-2 text-sm rounded-lg transition-colors ${
+                    sortOrder === 'asc'
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Asc
+                </button>
+              </div>
+            </div>
+
+            {/* Active Filters */}
+            {hasActiveFilters && (
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Active Filters</h3>
+                <div className="space-y-2">
+                  {searchTerm && (
+                    <div className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                      <span className="text-sm text-gray-600">Search: "{searchTerm}"</span>
                       <button
-                        onClick={() => handleDelete(post.id)}
-                        className="text-red-600 hover:text-red-800 text-xs font-medium px-2 py-1 rounded bg-red-100 hover:bg-red-200 transition-colors"
+                        onClick={() => setSearchTerm('')}
+                        className="text-red-500 hover:text-red-700"
                       >
-                        Yes
-                      </button>
-                      <button
-                        onClick={cancelDelete}
-                        className="text-gray-600 hover:text-gray-800 text-xs font-medium px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 transition-colors"
-                      >
-                        No
+                        ×
                       </button>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => confirmDelete(post.id)}
-                      className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50"
-                      title="Delete post"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
                   )}
-                </div>
-              )}
-
-              {/* Debug Info for each post - Remove in production */}
-              <div className="absolute top-4 left-4 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
-                <span className="text-xs text-yellow-700">
-                  Post ID: {post.id} | User ID: {post.user_id} | Is Author: {isPostAuthor(post) ? 'Yes' : 'No'}
-                </span>
-              </div>
-
-              {/* Post Header */}
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-amber-200 rounded-full flex items-center justify-center">
-                  {post.user?.profile_image ? (
-                    <img
-                      src={`http://localhost:5000${post.user.profile_image}`}
-                      alt="Profile"
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-amber-700 font-semibold">
-                      {post.user?.first_name?.[0] || post.user?.username?.[0] || 'U'}
-                    </span>
+                  {selectedCategory && (
+                    <div className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                      <span className="text-sm text-gray-600">Category: {selectedCategory}</span>
+                      <button
+                        onClick={() => setSelectedCategory('')}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        ×
+                      </button>
+                    </div>
                   )}
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-gray-900">
-                    {post.user?.first_name && post.user?.last_name
-                      ? `${post.user.first_name} ${post.user.last_name}`
-                      : post.user?.username || 'Unknown User'
-                    }
-                  </div>
-                  <div className="text-sm text-gray-500">{formatDate(post.created_at)}</div>
-                </div>
-              </div>
-
-              {/* Post Title */}
-              {post.title && (
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">{post.title}</h3>
-              )}
-
-              {/* Post Content */}
-              <div 
-                className="text-gray-700 leading-relaxed mb-4"
-                dangerouslySetInnerHTML={{ __html: formatContent(post.content) }}
-              />
-
-              {/* Media */}
-              {renderMedia(post)}
-
-              {/* Tags */}
-              {post.tags && post.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {post.tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-sm font-medium border border-amber-200"
-                    >
-                      #{tag}
-                    </span>
+                  {selectedTags.map((tag) => (
+                    <div key={tag} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                      <span className="text-sm text-gray-600">Tag: {tag}</span>
+                      <button
+                        onClick={() => handleTagToggle(tag)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        ×
+                      </button>
+                    </div>
                   ))}
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Posts List */}
+        <div className="lg:col-span-3">
+          {posts.length === 0 && !loading ? (
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-12 text-center">
+              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No posts found</h3>
+              <p className="text-gray-600 mb-4">
+                {hasActiveFilters 
+                  ? "Try adjusting your filters to see more posts."
+                  : "Be the first to create a post!"
+                }
+              </p>
+              {!hasActiveFilters && (
+                <Link
+                  to="/posts/create"
+                  className="bg-gradient-to-r from-amber-600 to-yellow-600 text-white px-6 py-3 rounded-lg hover:from-amber-700 hover:to-yellow-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
+                >
+                  Create Your First Post
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {posts.map((post) => (
+                <div key={post.id} className="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow duration-200">
+                  {/* Post Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 flex items-center justify-center text-white font-semibold text-lg">
+                        {post.user?.first_name?.[0] || post.user?.username?.[0] || 'U'}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">
+                          {post.user?.first_name && post.user?.last_name
+                            ? `${post.user.first_name} ${post.user.last_name}`
+                            : post.user?.username || 'Unknown User'
+                          }
+                        </h3>
+                        <p className="text-sm text-gray-500">{formatDate(post.created_at)}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Post Actions */}
+                    <div className="flex items-center space-x-2">
+                      {isPostAuthor(post) && (
+                        <button
+                          onClick={() => setDeleteConfirm(post.id)}
+                          className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                          title="Delete post"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Post Title */}
+                  {post.title && (
+                    <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>
+                      {post.title}
+                    </h2>
+                  )}
+
+                  {/* Post Content */}
+                  <div 
+                    className="text-gray-700 mb-4 leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: formatContent(post.content) }}
+                  />
+
+                  {/* Post Media */}
+                  {renderMedia(post)}
+
+                  {/* Post Tags */}
+                  {post.tags && post.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {post.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1 bg-amber-100 text-amber-800 text-sm rounded-full"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Post Stats */}
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <div className="flex items-center space-x-4">
+                      <button
+                        onClick={() => handleLike(post.id)}
+                        className="flex items-center space-x-1 text-gray-500 hover:text-amber-500 transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                        <span>{post.likes_count}</span>
+                      </button>
+                      <div className="flex items-center space-x-1 text-gray-500">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <span>{post.views_count}</span>
+                      </div>
+                      <div className="flex items-center space-x-1 text-gray-500">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        <span>{post.comments_count}</span>
+                      </div>
+                      {/* Share Button */}
+                      <button
+                        onClick={() => handleShare(post.id)}
+                        className="flex items-center space-x-1 text-gray-500 hover:text-amber-500 transition-colors relative"
+                        title="Share post"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 8a3 3 0 11-6 0 3 3 0 016 0zm6 8a3 3 0 11-6 0 3 3 0 016 0zm-6 0a3 3 0 11-6 0 3 3 0 016 0zm6-8v8m-6-4h6" />
+                        </svg>
+                        <span>Share</span>
+                        {shareMessage[post.id] && (
+                          <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-amber-600 text-white text-xs rounded px-2 py-1 shadow-lg">Link copied!</span>
+                        )}
+                      </button>
+                    </div>
+                    
+                    {post.is_featured && (
+                      <div className="flex items-center space-x-1 text-amber-600">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                        <span className="text-sm font-medium">Featured</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* Load More Trigger */}
+              {hasNextPage && (
+                <div ref={observerRef} className="flex justify-center py-8">
+                  {loadingMore ? (
+                    <LoadingSpinner size="md" />
+                  ) : (
+                    <div className="text-gray-500 text-sm">Loading more posts...</div>
+                  )}
+                </div>
               )}
 
-              {/* Engagement */}
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                <div className="flex items-center space-x-6">
-                  <button
-                    onClick={() => handleLike(post.id)}
-                    className="flex items-center space-x-2 text-gray-500 hover:text-red-500 transition-colors"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                    <span>{post.likes_count}</span>
-                  </button>
-                  
-                  <div className="flex items-center space-x-2 text-gray-500">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                    <span>{post.comments_count}</span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2 text-gray-500">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                    </svg>
-                    <span>{post.shares_count}</span>
-                  </div>
+              {/* End of Posts */}
+              {!hasNextPage && posts.length > 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <p>You've reached the end of all posts!</p>
                 </div>
-                
-                <div className="flex items-center space-x-2 text-gray-500 text-sm">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  <span>{post.views_count} views</span>
-                </div>
-              </div>
+              )}
             </div>
-          ))
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Pagination */}
-      {pagination.pages > 1 && (
-        <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mt-6">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-500">
-              Showing {((pagination.page - 1) * pagination.per_page) + 1} to {Math.min(pagination.page * pagination.per_page, pagination.total)} of {pagination.total} posts
-            </div>
-            
-            <div className="flex items-center space-x-2">
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Post</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this post? This action cannot be undone.
+            </p>
+            <div className="flex space-x-3">
               <button
-                onClick={() => setCurrentPage(currentPage - 1)}
-                disabled={!pagination.has_prev}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                Previous
+                Cancel
               </button>
-              
-              <span className="px-4 py-2 text-gray-700">
-                Page {pagination.page} of {pagination.pages}
-              </span>
-              
               <button
-                onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={!pagination.has_next}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                onClick={() => handleDelete(deleteConfirm)}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
-                Next
+                Delete
               </button>
             </div>
           </div>

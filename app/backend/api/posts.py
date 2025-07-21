@@ -3,16 +3,71 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from models.user import User, db
 from models.post import Post
 from utils.media_processor import MediaProcessor
+from sqlalchemy import or_, and_, desc, asc, func, String
+from sqlalchemy.orm import joinedload
 import json
 import os
+from datetime import datetime, timedelta
 from config import Config
+import redis
+import pickle
 
 posts_bp = Blueprint('posts', __name__)
+ 
+# Initialize Redis for caching (optional - will work without Redis)
+try:
+    redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=False)
+    REDIS_AVAILABLE = True
+except:
+    REDIS_AVAILABLE = False
+    redis_client = None
+
+def get_cache_key(prefix, **kwargs):
+    """Generate cache key for Redis"""
+    key_parts = [prefix]
+    for k, v in sorted(kwargs.items()):
+        key_parts.append(f"{k}:{v}")
+    return ":".join(key_parts)
+
+def get_cached_data(key, expire_time=300):
+    """Get data from cache"""
+    if not REDIS_AVAILABLE:
+        return None
+    
+    try:
+        data = redis_client.get(key)
+        if data:
+            return pickle.loads(data)
+    except:
+        pass
+    return None
+
+def set_cached_data(key, data, expire_time=300):
+    """Set data in cache"""
+    if not REDIS_AVAILABLE:
+        return
+    
+    try:
+        redis_client.setex(key, expire_time, pickle.dumps(data))
+    except:
+        pass
+
+def invalidate_cache_pattern(pattern):
+    """Invalidate cache by pattern"""
+    if not REDIS_AVAILABLE:
+        return
+    
+    try:
+        keys = redis_client.keys(pattern)
+        if keys:
+            redis_client.delete(*keys)
+    except:
+        pass
 
 @posts_bp.route('/', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def get_posts():
-    """Get all posts with pagination and filtering"""
+    """Get all posts with advanced filtering, sorting, and pagination"""
     if request.method == 'OPTIONS':
         return '', 200
     
@@ -21,15 +76,79 @@ def get_posts():
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 10, type=int), 50)  # Max 50 per page
         user_id = request.args.get('user_id', type=int)
+        search = request.args.get('search', '').strip()
+        category = request.args.get('category', '').strip()
+        tags = request.args.get('tags', '').strip()
+        visibility = request.args.get('visibility', '').strip()
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
         
-        # Build query
-        query = Post.query.filter_by(is_published=True)
+        # Validate sort parameters
+        allowed_sort_fields = ['created_at', 'updated_at', 'likes_count', 'views_count', 'comments_count', 'shares_count']
+        if sort_by not in allowed_sort_fields:
+            sort_by = 'created_at'
         
+        if sort_order not in ['asc', 'desc']:
+            sort_order = 'desc'
+        
+        # Build cache key
+        cache_key = get_cache_key(
+            'posts:list',
+            page=page,
+            per_page=per_page,
+            user_id=user_id or 'all',
+            search=search or 'none',
+            category=category or 'none',
+            tags=tags or 'none',
+            visibility=visibility or 'all',
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+        
+        # Try to get from cache
+        cached_result = get_cached_data(cache_key, 60)  # 1 minute cache
+        if cached_result:
+            return jsonify(cached_result), 200
+        
+        # Build query with eager loading
+        query = Post.query.options(joinedload(Post.user)).filter_by(is_published=True)
+        
+        # Apply filters
         if user_id:
             query = query.filter_by(user_id=user_id)
         
-        # Order by creation date (newest first)
-        query = query.order_by(Post.created_at.desc())
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                or_(
+                    Post.content.ilike(search_term),
+                    Post.title.ilike(search_term),
+                    Post.tags.cast(String).ilike(search_term)
+                )
+            )
+        
+        if category:
+            # For now, we'll use tags as categories
+            query = query.filter(Post.tags.cast(String).ilike(f"%{category}%"))
+        
+        if tags:
+            tag_list = [tag.strip() for tag in tags.split(',') if tag.strip()]
+            for tag in tag_list:
+                query = query.filter(Post.tags.cast(String).ilike(f"%{tag}%"))
+        
+        if visibility == 'featured':
+            query = query.filter_by(is_featured=True)
+        elif visibility == 'recent':
+            # Posts from last 7 days
+            week_ago = datetime.utcnow() - timedelta(days=7)
+            query = query.filter(Post.created_at >= week_ago)
+        
+        # Apply sorting
+        sort_column = getattr(Post, sort_by)
+        if sort_order == 'desc':
+            query = query.order_by(desc(sort_column))
+        else:
+            query = query.order_by(asc(sort_column))
         
         # Paginate results
         posts = query.paginate(
@@ -41,7 +160,7 @@ def get_posts():
         # Format response
         posts_data = [post.to_dict() for post in posts.items]
         
-        return jsonify({
+        result = {
             'posts': posts_data,
             'pagination': {
                 'page': page,
@@ -50,11 +169,167 @@ def get_posts():
                 'pages': posts.pages,
                 'has_next': posts.has_next,
                 'has_prev': posts.has_prev
+            },
+            'filters': {
+                'search': search,
+                'category': category,
+                'tags': tags,
+                'visibility': visibility,
+                'sort_by': sort_by,
+                'sort_order': sort_order
             }
-        }), 200
+        }
+        
+        # Cache the result
+        set_cached_data(cache_key, result, 60)
+        
+        return jsonify(result), 200
         
     except Exception as e:
         return jsonify({'error': f'Failed to fetch posts: {str(e)}'}), 500
+
+@posts_bp.route('/categories', methods=['GET', 'OPTIONS'])
+@jwt_required()
+def get_categories():
+    """Get all available categories (tags)"""
+    if request.method == 'OPTIONS':
+        return '', 200
+    
+    try:
+        # Try to get from cache
+        cache_key = 'posts:categories'
+        cached_result = get_cached_data(cache_key, 300)  # 5 minutes cache
+        if cached_result:
+            return jsonify(cached_result), 200
+        
+        # Get all unique tags from posts
+        posts = Post.query.filter_by(is_published=True).all()
+        all_tags = []
+        for post in posts:
+            if post.tags:
+                all_tags.extend(post.tags)
+        
+        # Count tag frequency
+        tag_counts = {}
+        for tag in all_tags:
+            tag_counts[tag] = tag_counts.get(tag, 0) + 1
+        
+        # Sort by frequency and get top 20
+        sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:20]
+        
+        categories = [
+            {
+                'name': tag,
+                'count': count,
+                'slug': tag.lower().replace(' ', '-')
+            }
+            for tag, count in sorted_tags
+        ]
+        
+        result = {'categories': categories}
+        
+        # Cache the result
+        set_cached_data(cache_key, result, 300)
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch categories: {str(e)}'}), 500
+
+@posts_bp.route('/popular-tags', methods=['GET', 'OPTIONS'])
+@jwt_required()
+def get_popular_tags():
+    """Get most popular tags"""
+    if request.method == 'OPTIONS':
+        return '', 200
+    
+    try:
+        # Try to get from cache
+        cache_key = 'posts:popular_tags'
+        cached_result = get_cached_data(cache_key, 600)  # 10 minutes cache
+        if cached_result:
+            return jsonify(cached_result), 200
+        
+        # Get all unique tags from posts
+        posts = Post.query.filter_by(is_published=True).all()
+        all_tags = []
+        for post in posts:
+            if post.tags:
+                all_tags.extend(post.tags)
+        
+        # Count tag frequency
+        tag_counts = {}
+        for tag in all_tags:
+            tag_counts[tag] = tag_counts.get(tag, 0) + 1
+        
+        # Sort by frequency and get top 15
+        sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:15]
+        
+        popular_tags = [
+            {
+                'tag': tag,
+                'count': count,
+                'slug': tag.lower().replace(' ', '-')
+            }
+            for tag, count in sorted_tags
+        ]
+        
+        result = {'popular_tags': popular_tags}
+        
+        # Cache the result
+        set_cached_data(cache_key, result, 600)
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch popular tags: {str(e)}'}), 500
+
+@posts_bp.route('/stats', methods=['GET', 'OPTIONS'])
+@jwt_required()
+def get_posts_stats():
+    """Get posts statistics"""
+    if request.method == 'OPTIONS':
+        return '', 200
+    
+    try:
+        # Try to get from cache
+        cache_key = 'posts:stats'
+        cached_result = get_cached_data(cache_key, 300)  # 5 minutes cache
+        if cached_result:
+            return jsonify(cached_result), 200
+        
+        # Calculate statistics
+        total_posts = Post.query.filter_by(is_published=True).count()
+        featured_posts = Post.query.filter_by(is_published=True, is_featured=True).count()
+        
+        # Posts from last 7 days
+        week_ago = datetime.utcnow() - timedelta(days=7)
+        recent_posts = Post.query.filter(
+            Post.is_published == True,
+            Post.created_at >= week_ago
+        ).count()
+        
+        # Total engagement
+        total_likes = db.session.query(func.sum(Post.likes_count)).filter_by(is_published=True).scalar() or 0
+        total_views = db.session.query(func.sum(Post.views_count)).filter_by(is_published=True).scalar() or 0
+        
+        stats = {
+            'total_posts': total_posts,
+            'featured_posts': featured_posts,
+            'recent_posts': recent_posts,
+            'total_likes': total_likes,
+            'total_views': total_views
+        }
+        
+        result = {'stats': stats}
+        
+        # Cache the result
+        set_cached_data(cache_key, result, 300)
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch stats: {str(e)}'}), 500
 
 @posts_bp.route('/', methods=['POST', 'OPTIONS'])
 @jwt_required()
@@ -121,6 +396,9 @@ def create_post():
         
         db.session.add(post)
         db.session.commit()
+        
+        # Invalidate cache
+        invalidate_cache_pattern('posts:*')
         
         return jsonify({
             'message': 'Post created successfully',
@@ -194,6 +472,9 @@ def update_post(post_id):
         
         db.session.commit()
         
+        # Invalidate cache
+        invalidate_cache_pattern('posts:*')
+        
         return jsonify({
             'message': 'Post updated successfully',
             'post': post.to_dict()
@@ -230,6 +511,9 @@ def delete_post(post_id):
         db.session.delete(post)
         db.session.commit()
         
+        # Invalidate cache
+        invalidate_cache_pattern('posts:*')
+        
         return jsonify({'message': 'Post deleted successfully'}), 200
         
     except Exception as e:
@@ -252,6 +536,9 @@ def like_post(post_id):
         # Toggle like (simple implementation)
         post.likes_count += 1
         db.session.commit()
+        
+        # Invalidate cache
+        invalidate_cache_pattern('posts:*')
         
         return jsonify({
             'message': 'Post liked successfully',

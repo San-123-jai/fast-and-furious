@@ -41,12 +41,12 @@ migrate = Migrate(app, db)
 from api import auth_bp, profile_bp, posts_bp, feed_bp, jobs_bp, messaging_bp
 
 # Register blueprints
-app.register_blueprint(auth_bp, url_prefix='/auth')
-app.register_blueprint(profile_bp, url_prefix='/profile')
-app.register_blueprint(posts_bp, url_prefix='/posts')
-app.register_blueprint(feed_bp, url_prefix='/feed')
-app.register_blueprint(jobs_bp, url_prefix='/jobs')
-app.register_blueprint(messaging_bp, url_prefix='/messages')
+app.register_blueprint(auth_bp, url_prefix='/api/auth')
+app.register_blueprint(profile_bp, url_prefix='/api/profile')
+app.register_blueprint(posts_bp, url_prefix='/api/posts')
+app.register_blueprint(feed_bp, url_prefix='/api/feed')
+app.register_blueprint(jobs_bp, url_prefix='/api/jobs')
+app.register_blueprint(messaging_bp, url_prefix='/api/messages')
 
 # Add route to serve uploaded images at root level
 from flask import send_from_directory

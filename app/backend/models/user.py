@@ -59,7 +59,7 @@ class User(db.Model):
     @staticmethod
     def is_unique_email(email):
         return User.query.filter_by(email=email).first() is None
-
+    
     def to_dict(self):
         return {
             'id': self.id,
