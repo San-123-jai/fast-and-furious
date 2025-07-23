@@ -121,16 +121,18 @@ const PostCreate: React.FC = () => {
       formDataToSend.append('content', formData.content);
       formDataToSend.append('title', formData.title);
       formDataToSend.append('tags', JSON.stringify(formData.tags));
-      
       formDataToSend.append('media_type', formData.mediaType);
       if (formData.media) {
         formDataToSend.append('media', formData.media);
       }
-      
       await postsApi.createPost(formDataToSend);
       navigate('/posts');
     } catch (err: any) {
-      setError(err.message || 'Failed to create post');
+      if (err.response && err.response.data && err.response.data.error) {
+        setError(err.response.data.error);
+      } else {
+        setError(err.message || 'Failed to create post');
+      }
     } finally {
       setIsSubmitting(false);
     }
