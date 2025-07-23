@@ -1,8 +1,15 @@
 
 import os
+import sys
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+
+# --- Force project root on sys.path for Render ---
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 try:
     # Absolute imports for deployment (Render, project root)
     from app.backend.config import Config
