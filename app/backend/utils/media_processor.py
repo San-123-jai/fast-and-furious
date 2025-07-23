@@ -4,7 +4,7 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 from PIL import Image
 import magic
-from config import Config
+from ..config import Config
 
 class MediaProcessor:
     """Handle media file uploads, validation, and processing"""

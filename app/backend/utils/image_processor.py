@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from PIL import Image
 from werkzeug.utils import secure_filename
-from config import Config
+from ..config import Config
 
 def allowed_file(filename):
     """Check if file extension is allowed"""

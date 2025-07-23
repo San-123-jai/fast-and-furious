@@ -1,14 +1,14 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models.user import User, db
-from models.post import Post
-from utils.media_processor import MediaProcessor
+from ..models.user import User, db
+from ..models.post import Post
+from ..utils.media_processor import MediaProcessor
 from sqlalchemy import or_, and_, desc, asc, func, String
 from sqlalchemy.orm import joinedload
 import json
 import os
 from datetime import datetime, timedelta
-from config import Config
+from ..config import Config
 import redis
 import pickle
 

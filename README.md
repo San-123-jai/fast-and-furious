@@ -238,3 +238,19 @@ You'll know you've successfully completed this tutorial when you can:
 ---
 
 > 💡 **Remember:** This is a learning-focused project. Take your time to understand each concept before moving to the next module.
+
+## 🚀 Render Deployment Notes
+
+**To avoid `ModuleNotFoundError: No module named 'app'` on Render:**
+
+1. **Set the Render Working Directory to the project root** (where the `app` folder is, e.g., `/opt/render/project/src`).
+2. **Use this Start Command:**
+   ```
+   gunicorn app.backend.main:app
+   ```
+3. **Build Command:**
+   ```
+   pip install -r app/backend/requirements.txt
+   ```
+
+**Do NOT set the working directory to `app/backend` or use a different start command unless you change all imports to relative.**

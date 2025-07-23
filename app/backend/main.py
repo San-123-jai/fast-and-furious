@@ -2,7 +2,7 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-from .config import Config
+from app.backend.config import Config
 from dotenv import load_dotenv
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
@@ -24,10 +24,10 @@ jwt = JWTManager(app)
 CORS(app, supports_credentials=True)
 
 # Import models - User first, then Profile models
-from .models.user import User, db
-from .models.profile import Profile, Skill, Experience, Education
-from .models.post import Post
-from .api import auth_bp, profile_bp, posts_bp, feed_bp, jobs_bp, messaging_bp
+from app.backend.models.user import User, db
+from app.backend.models.profile import Profile, Skill, Experience, Education
+from app.backend.models.post import Post
+from app.backend.api import auth_bp, profile_bp, posts_bp, feed_bp, jobs_bp, messaging_bp
 
 # Initialize database
 db.init_app(app)

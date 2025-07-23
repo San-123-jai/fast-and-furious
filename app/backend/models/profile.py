@@ -1,5 +1,5 @@
 from .user import db
-from .config import Config
+from ..config import Config
 
 class Profile(db.Model):
     __tablename__ = 'profiles'

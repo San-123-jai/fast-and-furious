@@ -1,10 +1,10 @@
 from flask import Blueprint, request, jsonify, send_from_directory
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models.user import User, db
-from models.profile import Profile, Skill, Experience, Education
-from utils.image_processor import save_uploaded_file, delete_profile_image
+from ..models.user import User, db
+from ..models.profile import Profile, Skill, Experience, Education
+from ..utils.image_processor import save_uploaded_file, delete_profile_image
 import os
-from config import Config
+from ..config import Config
 
 profile_bp = Blueprint('profile', __name__)
  

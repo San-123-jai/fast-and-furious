@@ -1,7 +1,9 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from models.user import db
+from .user import db
+from ..config import Config
+from flask_cors import CORS
 
 class Post(db.Model):
     __tablename__ = 'posts'
