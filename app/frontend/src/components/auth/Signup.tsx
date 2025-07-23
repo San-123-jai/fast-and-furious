@@ -15,7 +15,7 @@ const Signup: React.FC = () => {
   const [signupError, setSignupError] = useState('');
   
   const navigate = useNavigate();
-  const { login } = useAuth();
+  useAuth();
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
