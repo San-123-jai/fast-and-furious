@@ -120,7 +120,7 @@ const PostCreate: React.FC = () => {
       const formDataToSend = new FormData();
       formDataToSend.append('content', formData.content);
       formDataToSend.append('title', formData.title);
-      formDataToSend.append('tags', formData.tags.join(','));
+      formDataToSend.append('tags', JSON.stringify(formData.tags));
       
       formDataToSend.append('media_type', formData.mediaType);
       if (formData.media) {
