@@ -13,3 +13,4 @@ Werkzeug==2.3.7
 redis==5.0.1 
 gunicorn 
 python-magic 
+psycopg2-binary 
