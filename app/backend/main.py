@@ -1,12 +1,25 @@
 
+import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-from app.backend.config import Config
+try:
+    # Absolute imports for deployment (Render, project root)
+    from app.backend.config import Config
+    from app.backend.models.user import User, db
+    from app.backend.models.profile import Profile, Skill, Experience, Education
+    from app.backend.models.post import Post
+    from app.backend.api import auth_bp, profile_bp, posts_bp, feed_bp, jobs_bp, messaging_bp
+except ImportError:
+    # Relative imports for local dev (from app/backend)
+    from .config import Config
+    from .models.user import User, db
+    from .models.profile import Profile, Skill, Experience, Education
+    from .models.post import Post
+    from .api import auth_bp, profile_bp, posts_bp, feed_bp, jobs_bp, messaging_bp
 from dotenv import load_dotenv
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
-import os
 
 # Load environment variables
 load_dotenv()
@@ -22,12 +35,6 @@ jwt = JWTManager(app)
 
 # Initialize extensions
 CORS(app, supports_credentials=True)
-
-# Import models - User first, then Profile models
-from app.backend.models.user import User, db
-from app.backend.models.profile import Profile, Skill, Experience, Education
-from app.backend.models.post import Post
-from app.backend.api import auth_bp, profile_bp, posts_bp, feed_bp, jobs_bp, messaging_bp
 
 # Initialize database
 db.init_app(app)
