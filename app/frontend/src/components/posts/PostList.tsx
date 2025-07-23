@@ -18,8 +18,6 @@ const PostList: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [notAuthenticated, setNotAuthenticated] = useState(false);
-  const [debugToken, setDebugToken] = useState<string | null>(null);
-  const [debugUser, setDebugUser] = useState<any>(null);
   const [shareMessage, setShareMessage] = useState<{ [postId: number]: boolean }>({});
 
   // Filter states
@@ -41,12 +39,6 @@ const PostList: React.FC = () => {
   // Get current user and token
   useEffect(() => {
     getCurrentUser();
-    setDebugToken(localStorage.getItem('token'));
-    try {
-      setDebugUser(JSON.parse(localStorage.getItem('user') || 'null'));
-    } catch {
-      setDebugUser(null);
-    }
   }, []);
 
   // Load initial data only if authenticated

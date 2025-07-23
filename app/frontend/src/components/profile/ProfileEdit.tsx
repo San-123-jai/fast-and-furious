@@ -79,7 +79,6 @@ const ProfileEdit: React.FC = () => {
     });
   };
   const addSkill = () => setForm((prev: any) => ({ ...prev, skills: [...prev.skills, ''] }));
-  const removeSkill = (idx: number) => setForm((prev: any) => ({ ...prev, skills: prev.skills.filter((_: any, i: number) => i !== idx) }));
 
   const handleExpChange = (idx: number, field: string, value: string) => {
     setForm((prev: any) => {
@@ -89,7 +88,6 @@ const ProfileEdit: React.FC = () => {
     });
   };
   const addExperience = () => setForm((prev: any) => ({ ...prev, experiences: [...prev.experiences, { ...emptyExperience }] }));
-  const removeExperience = (idx: number) => setForm((prev: any) => ({ ...prev, experiences: prev.experiences.filter((_: any, i: number) => i !== idx) }));
 
   const handleEduChange = (idx: number, field: string, value: string) => {
     setForm((prev: any) => {
@@ -99,7 +97,6 @@ const ProfileEdit: React.FC = () => {
     });
   };
   const addEducation = () => setForm((prev: any) => ({ ...prev, educations: [...prev.educations, { ...emptyEducation }] }));
-  const removeEducation = (idx: number) => setForm((prev: any) => ({ ...prev, educations: prev.educations.filter((_: any, i: number) => i !== idx) }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
