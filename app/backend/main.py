@@ -96,8 +96,21 @@ def create_dummy_user():
     inspector = sqlalchemy.inspect(db.engine)
     columns = [col['name'] for col in inspector.get_columns('users')]
     if 'is_deleted' not in columns:
-        print("⚠️  Skipping dummy user creation: 'is_deleted' column does not exist yet.")
-        return
+        print("⚠️  'is_deleted' column does not exist. Attempting to add columns via raw SQL.")
+        with db.engine.connect() as conn:
+            try:
+                conn.execute(sqlalchemy.text("ALTER TABLE users ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE"))
+                conn.execute(sqlalchemy.text("ALTER TABLE users ADD COLUMN deleted_at TIMESTAMP"))
+                print("✅ Columns is_deleted and deleted_at added via raw SQL.")
+            except Exception as e:
+                print(f"❌ Failed to add columns via raw SQL: {e}")
+                return
+        # Re-inspect columns after adding
+        inspector = sqlalchemy.inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        if 'is_deleted' not in columns:
+            print("❌ Columns still missing after raw SQL attempt. Skipping dummy user creation.")
+            return
     user = User.query.filter_by(email=email).first()
     if not user:
         user = User(username=username, email=email, password_hash=generate_password_hash(password))
