@@ -41,7 +41,10 @@ Config.init_app(app)
 jwt = JWTManager(app)
 
 # Initialize extensions
-CORS(app, supports_credentials=True)
+CORS(app, supports_credentials=True, origins=[
+    "https://fast-and-furious-frontend.onrender.com",
+    "http://localhost:5173"
+])
 
 # Initialize database
 db.init_app(app)
