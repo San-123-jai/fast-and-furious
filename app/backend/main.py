@@ -27,6 +27,7 @@ except ImportError:
 from dotenv import load_dotenv
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
+import sqlalchemy
 
 # Load environment variables
 load_dotenv()
@@ -91,6 +92,12 @@ def create_dummy_user():
     email = 'demo@example.com'
     password = 'Demo@1234'
     username = 'demo'
+    # Check if is_deleted column exists
+    inspector = sqlalchemy.inspect(db.engine)
+    columns = [col['name'] for col in inspector.get_columns('users')]
+    if 'is_deleted' not in columns:
+        print("⚠️  Skipping dummy user creation: 'is_deleted' column does not exist yet.")
+        return
     user = User.query.filter_by(email=email).first()
     if not user:
         user = User(username=username, email=email, password_hash=generate_password_hash(password))
