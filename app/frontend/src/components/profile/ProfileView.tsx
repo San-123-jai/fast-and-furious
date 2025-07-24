@@ -169,6 +169,47 @@ const ProfileView: React.FC = () => {
               </div>
             )}
 
+            {/* Social Links */}
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>Social Links</h2>
+              <ul className="space-y-2">
+                <li><a href="https://linkedin.com/in/example" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">LinkedIn</a></li>
+                <li><a href="https://github.com/example" target="_blank" rel="noopener noreferrer" className="text-gray-900 hover:underline">GitHub</a></li>
+                <li><a href="https://twitter.com/example" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Twitter</a></li>
+              </ul>
+            </div>
+
+            {/* Languages */}
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>Languages</h2>
+              <ul className="flex flex-wrap gap-4">
+                <li className="bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-sm font-medium border border-amber-200">English (Fluent)</li>
+                <li className="bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-sm font-medium border border-amber-200">Hindi (Native)</li>
+                <li className="bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-sm font-medium border border-amber-200">Tamil (Conversational)</li>
+              </ul>
+            </div>
+
+            {/* Certifications */}
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>Certifications</h2>
+              <ul className="list-disc pl-6 text-gray-700 space-y-1">
+                <li>Certified Python Developer (2024)</li>
+                <li>Full Stack Web Development (Coursera, 2023)</li>
+                <li>Google Cloud Associate Engineer (2022)</li>
+              </ul>
+            </div>
+
+            {/* Hobbies */}
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>Hobbies</h2>
+              <ul className="flex flex-wrap gap-4">
+                <li className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium border border-blue-200">Reading</li>
+                <li className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium border border-blue-200">Cricket</li>
+                <li className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium border border-blue-200">Coding</li>
+                <li className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium border border-blue-200">Traveling</li>
+              </ul>
+            </div>
+
             {/* Experience */}
             {profile.experiences && profile.experiences.length > 0 && (
               <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
