@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { profileApi } from './api';
 import { useNavigate } from 'react-router-dom';
+import API_URL from '../../utils/getApiUrl';
 
 const emptyExperience = { title: '', company: '', start_date: '', end_date: '', description: '' };
 const emptyEducation = { school: '', degree: '', field: '', start_date: '', end_date: '' };
@@ -149,7 +150,7 @@ const ProfileEdit: React.FC = () => {
             <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-100 border-4 border-amber-200 shadow-lg">
               {imagePreview ? (
                 <img 
-                  src={imagePreview.startsWith('data:') ? imagePreview : `http://localhost:5000${imagePreview}`} 
+                  src={imagePreview.startsWith('data:') ? imagePreview : `${API_URL}${imagePreview}`} 
                   alt="Profile" 
                   className="w-full h-full object-cover"
                 />

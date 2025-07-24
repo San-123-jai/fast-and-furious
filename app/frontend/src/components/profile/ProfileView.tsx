@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { profileApi } from './api';
+import API_URL from '../../utils/getApiUrl';
 
 const ProfileView: React.FC = () => {
   const [profile, setProfile] = useState<any>(null);
@@ -117,7 +118,7 @@ const ProfileView: React.FC = () => {
               <div className="w-32 h-32 rounded-full border-4 border-white overflow-hidden bg-gray-200 shadow-lg">
                 {profile.profile_image ? (
                   <img 
-                    src={`http://localhost:5000${profile.profile_image}`} 
+                    src={`${API_URL}${profile.profile_image}`} 
                     alt="Profile" 
                     className="w-full h-full object-cover"
                     onError={(e) => {
