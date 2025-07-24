@@ -78,7 +78,8 @@ setup_database()
 print('⚡ Attempting to run database migrations...')
 try:
     from flask_migrate import upgrade
-    upgrade()
+    with app.app_context():
+        upgrade()
     print('✅ Database migrations applied successfully!')
 except Exception as e:
     print(f'⚠️  Database migration failed: {e}')
