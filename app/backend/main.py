@@ -27,7 +27,6 @@ except ImportError:
 from dotenv import load_dotenv
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
-from flask_migrate import stamp
 
 # Load environment variables
 load_dotenv()
@@ -75,8 +74,13 @@ def setup_database():
 # Always create tables on startup (temporary for deployment)
 setup_database()
 
-with app.app_context():
-    stamp()
+# TEMPORARY: Run migrations on every startup (for Render)
+from flask_migrate import upgrade as migrate_upgrade
+try:
+    migrate_upgrade()
+    print("✅ Database migrations applied successfully!")
+except Exception as e:
+    print(f"⚠️  Database migration failed: {e}")
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000) 
