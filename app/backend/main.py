@@ -83,5 +83,25 @@ try:
 except Exception as e:
     print(f"⚠️  Database migration failed: {e}")
 
+# TEMPORARY: Create a dummy user for login if not exists
+from app.backend.models.user import User, db
+from werkzeug.security import generate_password_hash
+
+def create_dummy_user():
+    email = 'demo@example.com'
+    password = 'Demo@1234'
+    username = 'demo'
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        user = User(username=username, email=email, password_hash=generate_password_hash(password))
+        db.session.add(user)
+        db.session.commit()
+        print(f"✅ Dummy user created: {email} / {password}")
+    else:
+        print(f"ℹ️  Dummy user already exists: {email}")
+
+with app.app_context():
+    create_dummy_user()
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000) 
