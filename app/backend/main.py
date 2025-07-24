@@ -77,7 +77,8 @@ setup_database()
 # TEMPORARY: Run migrations on every startup (for Render)
 from flask_migrate import upgrade as migrate_upgrade
 try:
-    migrate_upgrade()
+    with app.app_context():
+        migrate_upgrade()
     print("✅ Database migrations applied successfully!")
 except Exception as e:
     print(f"⚠️  Database migration failed: {e}")
