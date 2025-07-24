@@ -71,9 +71,8 @@ def setup_database():
         db.create_all()
         print("✅ Database tables created successfully!")
 
+# Always create tables on startup (temporary for deployment)
+setup_database()
+
 if __name__ == '__main__':
-    # Setup database tables (auto-create if missing)
-    setup_database()
-    
-    # Run the app
     app.run(debug=True, host='0.0.0.0', port=5000) 
