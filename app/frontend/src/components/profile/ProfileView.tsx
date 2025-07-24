@@ -44,6 +44,17 @@ const ProfileView: React.FC = () => {
     alert('Messages feature coming soon!');
   };
 
+  const handleDeleteProfile = async () => {
+    if (!window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) return;
+    try {
+      await profileApi.deleteProfile();
+      localStorage.removeItem('token');
+      navigate('/login');
+    } catch (err) {
+      alert('Failed to delete account.');
+    }
+  };
+
   if (loading) return <div className="text-center p-8">Loading profile...</div>;
   if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
   if (!profile) return <div className="text-center p-8">Profile not found</div>;
@@ -88,6 +99,16 @@ const ProfileView: React.FC = () => {
             <Link to="/profile/edit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors">
               Edit Profile
             </Link>
+            {/* Delete Profile Icon/Button */}
+            <button
+              title="Delete Account"
+              onClick={handleDeleteProfile}
+              className="p-2 text-red-600 hover:text-white hover:bg-red-600 rounded-full border border-red-200 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>

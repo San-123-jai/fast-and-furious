@@ -35,4 +35,15 @@ export const profileApi = {
     });
     return response.json();
   },
+
+  deleteProfile: async () => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/api/profile/`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    return response.json();
+  },
 }; 

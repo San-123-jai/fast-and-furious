@@ -170,4 +170,25 @@ def upload_profile_image():
         'image_url': result
     }), 200
 
+@profile_bp.route('/', methods=['DELETE', 'OPTIONS'])
+@jwt_required()
+def delete_profile():
+    if request.method == 'OPTIONS':
+        return '', 200
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    # Delete related profile, skills, experiences, educations
+    profile = Profile.query.filter_by(user_id=user_id).first()
+    if profile:
+        Skill.query.filter_by(profile_id=profile.id).delete()
+        Experience.query.filter_by(profile_id=profile.id).delete()
+        Education.query.filter_by(profile_id=profile.id).delete()
+        db.session.delete(profile)
+    # Delete user
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({'message': 'Account deleted successfully'}), 200
+
 # Remove duplicate routes - images are now served at root level in main.py 
