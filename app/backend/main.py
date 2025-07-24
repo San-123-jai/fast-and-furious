@@ -76,6 +76,7 @@ setup_database()
 
 if __name__ == '__main__':
     # TEMP: Run migrations on startup for production (Render)
+    print('⚡ Attempting to run database migrations...')
     try:
         from flask_migrate import upgrade
         upgrade()
