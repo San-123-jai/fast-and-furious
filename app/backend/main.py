@@ -41,10 +41,7 @@ Config.init_app(app)
 jwt = JWTManager(app)
 
 # Initialize extensions
-CORS(app, supports_credentials=True, origins=[
-    "https://fast-and-furious-frontend.onrender.com",
-    "http://localhost:5173"
-])
+CORS(app, supports_credentials=True)
 
 # Initialize database
 db.init_app(app)
@@ -75,7 +72,7 @@ def setup_database():
         print("✅ Database tables created successfully!")
 
 if __name__ == '__main__':
-    # Setup database tables
+    # Setup database tables (auto-create if missing)
     setup_database()
     
     # Run the app
