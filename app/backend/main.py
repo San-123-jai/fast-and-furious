@@ -83,7 +83,7 @@ try:
 except Exception as e:
     print(f"⚠️  Database migration failed: {e}")
 
-# TEMPORARY: Create a dummy user for login if not exists
+# TEMPORARY: Create a dummy user for login if not exists (after migration)
 from app.backend.models.user import User, db
 from werkzeug.security import generate_password_hash
 
