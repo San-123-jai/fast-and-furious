@@ -74,13 +74,14 @@ def setup_database():
 # Always create tables on startup (temporary for deployment)
 setup_database()
 
+# TEMP: Run migrations on every startup for Render
+print('⚡ Attempting to run database migrations...')
+try:
+    from flask_migrate import upgrade
+    upgrade()
+    print('✅ Database migrations applied successfully!')
+except Exception as e:
+    print(f'⚠️  Database migration failed: {e}')
+
 if __name__ == '__main__':
-    # TEMP: Run migrations on startup for production (Render)
-    print('⚡ Attempting to run database migrations...')
-    try:
-        from flask_migrate import upgrade
-        upgrade()
-        print('✅ Database migrations applied successfully!')
-    except Exception as e:
-        print(f'⚠️  Database migration failed: {e}')
     app.run(debug=True, host='0.0.0.0', port=5000) 
