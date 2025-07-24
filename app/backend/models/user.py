@@ -25,6 +25,8 @@ class User(db.Model):
     job_title = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_deleted = db.Column(db.Boolean, default=False)
+    deleted_at = db.Column(db.DateTime, nullable=True)
     
     # Relationships
     posts = db.relationship('Post', back_populates='user', cascade='all, delete-orphan')

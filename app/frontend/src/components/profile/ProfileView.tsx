@@ -7,6 +7,8 @@ const ProfileView: React.FC = () => {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showUndo, setShowUndo] = useState(false);
+  const [undoTimeout, setUndoTimeout] = useState<number | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,10 +50,27 @@ const ProfileView: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) return;
     try {
       await profileApi.deleteProfile();
-      localStorage.removeItem('token');
-      navigate('/login');
+      setShowUndo(true);
+      const timeout = setTimeout(() => {
+        setShowUndo(false);
+        localStorage.removeItem('token');
+        navigate('/login');
+      }, 30000);
+      setUndoTimeout(timeout);
     } catch (err) {
       alert('Failed to delete account.');
+    }
+  };
+
+  const handleUndoDelete = async () => {
+    try {
+      await profileApi.undoDeleteProfile();
+      setShowUndo(false);
+      if (undoTimeout) clearTimeout(undoTimeout);
+      // Optionally reload profile
+      window.location.reload();
+    } catch (err) {
+      alert('Failed to restore account.');
     }
   };
 
@@ -64,6 +83,18 @@ const ProfileView: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Undo Snackbar */}
+      {showUndo && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-amber-600 text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-4 z-50">
+          <span>Your account was deleted.</span>
+          <button
+            onClick={handleUndoDelete}
+            className="bg-white text-amber-700 px-4 py-2 rounded font-semibold hover:bg-amber-100 transition-colors"
+          >
+            Undo
+          </button>
+        </div>
+      )}
       {/* Header with Logout */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">

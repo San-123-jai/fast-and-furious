@@ -5,6 +5,7 @@ from ..models.profile import Profile, Skill, Experience, Education
 from ..utils.image_processor import save_uploaded_file, delete_profile_image
 import os
 from ..config import Config
+from datetime import datetime, timedelta
 
 profile_bp = Blueprint('profile', __name__)
  
@@ -179,16 +180,25 @@ def delete_profile():
     user = User.query.get(user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    # Delete related profile, skills, experiences, educations
-    profile = Profile.query.filter_by(user_id=user_id).first()
-    if profile:
-        Skill.query.filter_by(profile_id=profile.id).delete()
-        Experience.query.filter_by(profile_id=profile.id).delete()
-        Education.query.filter_by(profile_id=profile.id).delete()
-        db.session.delete(profile)
-    # Delete user
-    db.session.delete(user)
+    # Soft-delete user
+    user.is_deleted = True
+    user.deleted_at = datetime.utcnow()
     db.session.commit()
-    return jsonify({'message': 'Account deleted successfully'}), 200
+    return jsonify({'message': 'Account deleted. You can undo this action within 30 seconds.'}), 200
+
+@profile_bp.route('/undo-delete', methods=['POST'])
+@jwt_required()
+def undo_delete_profile():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user or not user.is_deleted:
+        return jsonify({'error': 'No deleted account to restore.'}), 400
+    # Only allow undo within 30 seconds
+    if user.deleted_at and (datetime.utcnow() - user.deleted_at > timedelta(seconds=30)):
+        return jsonify({'error': 'Undo period expired.'}), 400
+    user.is_deleted = False
+    user.deleted_at = None
+    db.session.commit()
+    return jsonify({'message': 'Account restored successfully.'}), 200
 
 # Remove duplicate routes - images are now served at root level in main.py 

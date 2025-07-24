@@ -46,4 +46,15 @@ export const profileApi = {
     });
     return response.json();
   },
+
+  undoDeleteProfile: async () => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/api/profile/undo-delete`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    return response.json();
+  },
 }; 
